@@ -1,0 +1,46 @@
+#pragma kernel CSMain
+
+RWTexture2D<float4> Result;
+
+#define MAX_PAINT_CALLS 64
+
+int2 paintPixelArr[MAX_PAINT_CALLS];
+int numOfPixels;
+
+int brushSize; // radius
+float4 color;
+
+[numthreads(8, 8, 1)]
+void CSMain(uint3 id : SV_DispatchThreadID)
+{
+    int2 local = int2(id.xy); // 0..(brushDiameter-1)
+    int brushDiameter = brushSize * 2;
+
+    // Ensure dispatch isn't larger than brushDiameter
+    if (local.x >= brushDiameter || local.y >= brushDiameter)
+        return;
+
+    // Circular mask check (same for all strokes)
+    int dx = local.x - brushSize;
+    int dy = local.y - brushSize;
+    bool insideCircle = (dx * dx + dy * dy) <= (brushSize * brushSize);
+
+    if (!insideCircle)
+        return;
+
+    // For each stroke center
+    for (int i = 0; i < numOfPixels; i++)
+    {
+        int2 center = paintPixelArr[i];
+        int2 pix = center + int2(dx, dy);
+
+        // Must clamp, or shader will crash / corrupt
+        int width, height;
+        Result.GetDimensions(width, height);
+
+        if (pix.x < 0 || pix.x >= width || pix.y < 0 || pix.y >= height)
+            continue;
+
+        Result[pix] = color;
+    }
+}

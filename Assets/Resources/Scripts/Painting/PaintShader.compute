@@ -1,0 +1,29 @@
+#pragma kernel CSMain
+
+RWTexture2D<float4> Result;
+
+int2 paintPixel;
+int brushSize;
+float4 color;
+
+[numthreads(8, 8, 1)]
+void CSMain(uint3 id : SV_DispatchThreadID)
+{
+    // id.xy is in 0..(brushDiameter-1)
+
+    int2 local = int2(id.xy);
+
+    // Convert local square coords into absolute texture coords:
+    // pix = brushCenter + (local - brushRadius)
+    int2 pix = paintPixel + local - int2(brushSize, brushSize);
+
+    // Distance from brush center (for circular brush)
+    int dx = pix.x - paintPixel.x;
+    int dy = pix.y - paintPixel.y;
+
+    if (dx * dx + dy * dy <= brushSize * brushSize)
+    {
+        Result[pix] = color;
+    }
+}
+
